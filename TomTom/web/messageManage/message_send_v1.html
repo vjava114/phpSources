@@ -1,0 +1,635 @@
+<?
+	include_once "../_inc/db.php";
+	include "../_inc/global.php";
+
+
+	// 쿠폰 정보 갖고오기
+	$listQuery = "
+				SELECT 					
+					(select count(*) as cnt FROM coupon_pin WHERE coupon_pin.coupon_seq = coupon_list.coupon_seq) as cnt,
+					coupon_seq, 
+					coupon_name, 
+					memo, 
+					date_reg 
+				FROM
+					coupon_list
+				WHERE 
+					use_yn='N'				
+
+				ORDER BY 
+					coupon_seq desc				
+	";
+	//echo "<br>쿼리 확인 : ".$listQuery;
+
+	$listResult = mysql_query($listQuery);
+
+
+
+?>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>TOM N TOMS ADMIN</title>
+<link rel="stylesheet" type="text/css" href="../css/default.css" />
+<link rel="stylesheet" type="text/css" href="../css/admin.css" />
+<script type="text/javascript" src="../js/jquery-1.8.3.min.js"></script>
+<script type="text/javascript" src="../js/common.js"></script>
+<script type="text/javascript" src="../js/input_file.js"></script>
+
+
+<script type="text/javascript" src="../js/my/my_listBox.js"></script>		<!-- ul li 조작 스크립트 -->
+
+
+
+
+<script type="text/javascript">
+
+var msgType="sms";
+function msgType(val){
+	msgType=val;
+}
+
+
+function chkImage(no){
+	if(no==1){
+		document.getElementById('type').innerText="MMS";
+	}else{
+		
+		
+		
+		if ($("#coupon option:selected").val() == "" && document.getElementById('byteInfo').innerText <= 80)		// 쿠폰 사용안함 상태일경우, 그리고 byte가 80자 이하일경우
+		{
+			document.getElementById('type').innerText="SMS";
+		} else if ($("#coupon option:selected").val() == "" && document.getElementById('byteInfo').innerText > 80)		// 쿠폰 사용안함 상태일경우, 그리고 byte가 80자 이하일경우
+		{
+			document.getElementById('type').innerText="LMS";
+		}
+	}
+}
+
+
+
+
+
+
+/***************** radio 버튼에 따른 발송대상자 list 생성 과정 분기문 S. *******************/
+
+var MODE = 1;
+
+function sendMode(n){
+	$("#phoneNo").val("");	//초기화
+	
+	switch(n) {
+		case 1 :
+			
+			$("#mode").val("send_direct");
+			MODE=1;
+		break;
+		
+		case 2 :
+			removeBtn_all();
+			
+			//$("#upfile").val("");			// 파일 제거가 잘 안됨.
+			$("#mode").val("send_db");
+			MODE=2;
+		break;
+		
+		case 3 :
+			
+			$("#mode").val("send_file");
+			MODE=3;
+		break;
+		
+		default :
+			alert("발송 대상자를 다시 선택하세요");
+			break;
+	}
+}
+/***************** radio 버튼에 따른 발송대상자 list 생성 과정 분기문 E. *******************/
+</script>
+
+
+
+
+
+
+<script type="text/javascript">	
+/************ 라디오버튼 작동에 의한 FORM 셋팅 관련... S. *************/
+$(document).ready(function(){
+	$("#directInput").show();				// 처음 페이지 로드시, 기본셋팅
+	$("#searchInput").hide();
+	$("#fileInput").hide();
+	$("#reg_image").hide();
+	
+	document.getElementById('chkCnt').innerText = "0";
+	
+	$("#send_direct").click(function(){		// 직접입력 Radio		
+		$("#directInput").show(500);
+		$("#searchInput").hide(500);
+		$("#fileInput").hide(500);
+		$("#chkCnt").val("");
+		document.getElementById('chkCnt').innerText = "0";
+		
+	});
+	$("#send_db").click(function(){			// DB 검색 등록 Radio
+		$("#directInput").hide(500);
+		$("#searchInput").show(500);
+		$("#fileInput").hide(500);
+		
+		
+	});
+	$("#send_file").click(function(){		// 파일 업로드 Radio
+		$("#directInput").hide(500);
+		$("#searchInput").hide(500);
+		$("#fileInput").show(500);
+		document.getElementById('chkCnt').innerText = "0";
+		
+	});
+});
+
+
+$(document).ready(function(){			
+	$("#img_no").click(function(){			// image 사용안함 Radio
+		$("#reg_image").hide(500);
+		$("#upfile_value2").val("");
+		
+	
+	});
+	$("#img_ok").click(function(){			// image 사용 Radio
+		$("#reg_image").show(500);
+	});
+});
+
+/************ 라디오버튼 작동에 의한 FORM 셋팅 관련... E. *************/
+</script>
+
+
+
+<script type="text/javascript">
+var window1 = null;
+$(document).ready(function(){
+	$("#popup1Btn").click(function(){		
+		$("#popup1").show(500);		
+	});
+	
+	$("#popup1_Close").click(function(){	// 팝업창 상단 x버튼
+		$("#popup1").hide(500);
+	});
+	$("#popup1_Close2").click(function(){	// 팝업창 취소 버튼
+		$("#popup1").hide(500);
+	});
+
+	$("#searchDB").click(function(){
+		
+		window1 = window.open("db_search_popup.html",
+									"",
+									"width=1280, height=802, location=no, tollbar=no,menubar=no,status=no,channelmode=no, realzable=no" );
+	});
+});
+
+
+
+function layerPopupClose(){
+	$("#popup1").hide();
+	$("#popup1").attr("src", "layerPopup.php");
+}
+</script>
+
+
+<script type="text/javascript">
+/**** li의 값들을 모아서 String 형으로 TEXT로 보내기 S. ****/
+function li_to_text(){
+	
+	
+	var text = $("#listBox li p");
+	var buffer = "";
+	
+	for(i=0; i<$(text).length; i++){
+		//alert($(text).eq(i).html());
+		//alert($(text).eq(i).innerText);		// 이거는 안됨.. text가 아닌듯.
+		if(i == 0)			buffer = ( $(text).eq(i).html());
+		else    			buffer += ( "," + $(text).eq(i).html());
+	 
+		 
+	}
+	
+	$("#phoneNo").val(buffer);
+	
+}
+/**** li의 값들을 모아서 String 형으로  TEXT로 보내기 E. ****/
+</script>
+
+<script type="text/javascript">
+/***************** 유효성검사 및 submit 처리 S. *******************/
+
+var isSubmit = false;	// submit 할 경우 true로 변경됨.
+function changeSubmit($val)
+{
+	isSubmit = $val;
+}
+function submitCheck(obj) 
+{
+	var cop = document.frm.coupon;
+
+		if ( cop.options[cop.selectedIndex].value != '')
+		{
+			alert('발송대상자가 쿠폰갯수보다 많을 경우\n\n발송되지 않습니다.');
+		}
+
+	// 확인버튼을 또 누를경우 아래와 같은 alert 뜨게끔 함.
+	if (isSubmit == true)
+	{
+		alert('등록 중입니다.\n페이지 잠시만 기다려 주세요.')	;
+		return;	// 함수를 더이상 실행시키지 않음.
+	}
+	
+	
+	if(chk() == true)		// 검사후 모두 통과시, true 리턴
+	{
+		isSubmit = true;
+		
+		if(MODE==1){		
+			li_to_text();	// li 박스에 있는값들을 hidden 으로 보내줌...	
+		}
+	
+
+		//obj.style.display='none';			// <<== 이렇게 그냥 감추는것으로 처리해도 되긴 함.
+		document.frm.submit();	
+	}
+	
+
+	
+	
+}
+
+// submit 전, 데이터 체크.
+function chk(){
+	var chk = false;
+	
+
+	
+
+	if($("#msg").val()==""){
+		alert("메세지를 작성 하세요.");
+		
+	}else if($("#event_name").val()==""){
+		alert("이벤트 이름을 작성 하세요.")
+	}else if($("#listBox li p").length==0 && $("#phoneNo").val()=="" && $("#upfile_value").val()==""){
+		alert("발송 대상자를 선택 하세요.")
+	}else if($("#sender").val()==""){
+		alert("발신번호를 작성 하세요.")
+	}else{
+		chk = true;
+	}
+	return chk;
+}
+
+/***************** 유효성검사 및 submit 처리 E. *******************/
+</script>
+
+
+
+
+<script type="text/javascript">
+/********************* textArea 동적 byte 체크 S. *****************************************/
+function fnChkByte(obj, maxByte){
+
+
+	
+	
+	var str = obj.value;
+	
+	
+	var str_len = str.length;
+
+	var rbyte = 0;			// 현재 증가,감소 중인 byte
+	var rlen = 0;
+	var one_char = "";
+	var str2 = "";
+	var changeMMS = 80;		// mms로 전환되는 byte
+	
+	for(var i=0; i<str_len; i++){
+
+		one_char = str.charAt(i);
+		if(escape(one_char).length > 4){
+		 rbyte += 2; //한글2Byte
+	
+		}else{
+		 rbyte++; //영문 등 나머지 1Byte
+	
+		}
+	
+		if(rbyte <= maxByte){
+		 rlen = i+1; //return할 문자열 갯수
+		}
+
+	}
+
+	if(rbyte > maxByte){
+	 	alert("한글 "+(maxByte/2)+"자 / 영문 "+maxByte+"자를 초과 입력할 수 없습니다. fnChkByte");
+		str2 = str.substr(0,rlen); //문자열 자르기
+	 	obj.value = str2;
+	 	fnChkByte(obj, maxByte);
+
+	}else{
+		document.getElementById('byteInfo').innerText = rbyte;
+		document.getElementById('byte').value = rbyte;
+	}
+	
+	// 강준영 추가 코딩..
+	if(rbyte > changeMMS){
+		//alert(" "+rbyte+" byte를 초과하여 MMS로 전환됩니다.");
+		if($("#coupon option:selected").val() == "" && $("#img_no").is(":checked")){
+			document.getElementById('type').innerText="LMS";
+		}
+		
+		
+	}else{
+		
+		if( $("#coupon option:selected").val() == "" && $("#img_no").is(":checked") )	//쿠폰 선택되어있지 않은경우, 그리고 이미지가 선택되어있지 않은경우
+		{
+			document.getElementById('type').innerText="SMS";
+		}
+	}
+
+}
+/********************* textArea 동적 byte 체크 E. *****************************************/
+ 
+
+
+/********************* 쿠폰번호를 textArea로 옴김 S. *****************************************/
+var onlyMsg = "";
+var appendText = "\n\n\n\n [coupon] \n";
+var chkAppendText = 0;	// appendText가 추가 되어있는지 안되어있는지 상태 나타냄.
+
+function coucponToText(no){
+	
+	
+	var obj = document.getElementById('msg');
+	
+	
+	
+	if(no.length > 1)
+	{
+		if (chkAppendText == 0)
+		{
+			onlyMsg = $("#msg").val(); 
+			$("#msg").val(onlyMsg + appendText);
+			
+			fnChkByte(obj,'2048');
+			chkAppendText = 1;
+			
+			document.getElementById('type').innerText="MMS";
+		}
+		
+	} 
+	else 
+	{
+		if (chkAppendText == 1)
+		{
+			var msg = $("#msg").val();
+			var index = msg.indexOf(appendText);
+
+			var msg = msg.substring(0, index);
+			$("#msg").val(msg);
+			
+			fnChkByte(obj,'2048');
+			chkAppendText = 0;
+			
+ 			if( $("#img_no").is(":checked") &&  document.getElementById('byteInfo').innerText < 80)		// 이미지가 선택되어있지 않은경우, 그리고 80byte 이하 인 경우.
+ 			{
+ 				document.getElementById('type').innerText="SMS";	
+ 			}else if ( $("#img_no").is(":checked") && document.getElementById('byteInfo').innerText > 80)		// 쿠폰 사용안함 상태일경우, 그리고 byte가 80자 이하일경우
+ 			{
+ 				document.getElementById('type').innerText="LMS";
+ 			}
+			
+		}
+	}
+	
+}
+/********************* 쿠폰번호를 textArea로 옴김 E. *****************************************/
+
+</script>
+
+</head>
+
+
+<body id="main_bg">
+<div id="wrap">
+	<!-- top -->
+	<div id="header">   	
+    	<h1><a href="/"><img src="../images/main_logo.png" alt="TOM N TOMS COFFEE" /></a></h1>
+		<ul id="gnb">
+			<li><a href="/">HOME</a></li>
+			<li> l </li>
+			<li><a href="#">사이트 바로가기</a></li>
+			<li> l </li>
+			<li><a href="#">관리자메뉴얼 다운</a></li>
+			<li> l </li>
+			<li><a href="../member/logout.php">로그아웃</a></li>			
+		</ul>
+		<ul id="main_menu">
+			<li><a href='#'><img src="../images/gnb01.png" alt="메뉴관리" onmouseout="this.src='../images/gnb01.png'"onmouseover="this.src='../images/gnb01_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb02.png" alt="매장관리" onmouseout="this.src='../images/gnb02.png'"onmouseover="this.src='../images/gnb02_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb03.png" alt="회원관리" onmouseout="this.src='../images/gnb03.png'"onmouseover="this.src='../images/gnb03_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb04.png" alt="이벤트관리" onmouseout="this.src='../images/gnb04.png'"onmouseover="this.src='../images/gnb04_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb05.png" alt="게시판관리" onmouseout="this.src='../images/gnb05.png'"onmouseover="this.src='../images/gnb05_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb06.png" alt="통계분석" onmouseout="this.src='../images/gnb06.png'"onmouseover="this.src='../images/gnb06_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb07.png" alt="설정" onmouseout="this.src='../images/gnb07.png'"onmouseover="this.src='../images/gnb07_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb08.png" alt="메시지발송" onmouseout="this.src='../images/gnb08.png'"onmouseover="this.src='../images/gnb08_on.png'"/></a></li>
+		</ul>
+	</div>
+    <!-- /top -->
+	<div id="container">
+	
+	
+
+	
+    	<!-- side -->
+		<div id="snb">
+        	<ul>
+				<li class="snb_top bg"><p class="title">메시지발송</p></li>
+				<li class="snb_menu"><img src="../images/blit_arrow.gif" alt="" />&nbsp;<a href="#">쿠폰관리</a>
+					<ul>
+						<li><a href="../couponManage/coupons_inquiry.html">쿠폰조회</a></li>
+						<li><a href="../couponManage/coupons_reg.html">쿠폰등록</a></li>
+					</ul>
+				</li>
+				<li class="snb_menu"><img src="../images/blit_arrow.gif" alt="" />&nbsp;<a href="#">메시지 관리</a>
+					<ul>
+						<li><a class="on" href="#">메시지 발송</a></li>
+					</ul>
+				</li>
+				<li class="snb_menu"><img src="../images/blit_arrow.gif" alt="" />&nbsp;<a href="#">메시지 통계 관리</a>
+					<ul>
+						<li><a href="../statics/send_statistics.html">발송통계</a></li>
+<!-- 						<li><a href="../statics/sum_statistics.html">정산통계</a></li> -->
+					</ul>
+				</li>
+				<li><img src="../images/snb_bottom.gif" alt="" /></li>
+			</ul>
+		</div>
+        <!-- /side -->
+        <!-- main -->
+		<form name="frm" id="frm" method="post" action="sendExcute.php" target="dynaction" enctype="multipart/form-data">
+		<div id="main">
+            <div class="gutter">
+				<div class="main_title">
+				
+					<h2><img src="../images/blit_arrow_green.gif" alt="" />&nbsp;메시지 발송</h2>
+					<p class="path">HOME <span>></span> 메시지발송 <span>></span> 메시지 관리  <span>></span> 메시지 발송</p>
+				</div>
+				<div class="section_main">
+				
+		
+
+					
+<!-- 위 주석을 대신하여 아래를 작성. -->						
+					<div class="phone">
+						<div class="phone_box">
+							<textarea onchange="fnChkByte(this,'2048')" onkeyup="fnChkByte(this,'2048')" placeholder="기입란." id="msg" name="msg" title="전송하실 메시지를 입력해주세요." cols="30" rows="10"></textarea>
+						</div>
+						<p><b id="byteInfo">0</b> byte / <span id="type">SMS</span></p><!-- 메시지 형식에 따른 값 노출이 다릅니다. -->
+					</div>
+					
+					
+					
+					<div class="section_right">
+                		<table>
+						<colgroup>
+						<col width="130px" />
+						<col width="*" />
+						</colgroup>
+						<tbody>				
+						<tr>
+							<th class="list_row" scope="row"><label for="event_name">이벤트명</label></th>
+							<td class="list_row alt"><input type="text" name="event" id="event_name" class="input mr10" style="width:341px" /><span>*통계에서 구분되는 명칭</span></td>
+						</tr>
+						<tr>
+							<th class="list_row" scope="row">이미지 등록</th>
+							<td class="list_row alt">
+								<p class="radio1">
+									<input type="radio" id="img_no" onchange="javascript:chkImage(this.value)" name="img" value="0" checked="checked"/><label for="img_no">사용안함</label>
+									<input type="radio" id="img_ok" onchange="javascript:chkImage(this.value)" name="img" value="1"/><label for="img_ok">사용</label>
+								</p>
+								<!-- 이미지 등록 -->
+								<div id="reg_image">
+									<input type="text" name="upfile_value2" id="upfile_value2" />
+									<div id="file_box"><input type="file" id="upfile2" onchange="changeFile2()" name="upfile2" /></div>
+								</div>
+							</td>
+						</tr>
+						<tr>
+							<th class="list_row" scope="row">쿠폰 사용</th>
+							<td class="list_row alt">
+								<select name="coupon" id="coupon" onchange="javascript:coucponToText(this.value)" class="input mr5" style="width:342px;height:auto;" title="사용하실 쿠폰을 선택해주세요.">
+									<option  value="">사용안함</option><!-- 사용안함이 기본값 입니다. -->
+									<?
+									while($row = mysql_fetch_array($listResult))
+									{
+									?>
+									<option value="<?= $row['coupon_seq'] ?>" ><?=$row['coupon_name']?>  ( <?= number_format($row['cnt']) ?> )건 </option><!-- 사용안함이 기본값 입니다. -->
+									<?
+										
+									}									
+									?>
+								</select>
+								<span>*쿠폰 선택 시, 작성된 메시지 하단에 쿠폰번호가 노출 됨.</span>
+							</td>
+						</tr>
+						<tr>
+							<th class="list_row" scope="row">발송 대상자</th>
+							<td class="list_row alt">
+								<p class="radio1">
+									<input type="radio" id="send_direct" onclick="sendMode(1)" name="sendRadio" value="1" checked="checked"/><label for="send_direct">직접 입력</label>
+									<input type="radio" id="send_db" onclick="sendMode(2)" name="sendRadio" value="2"/><label for="send_db">DB 검색 등록</label>
+									<input type="radio" id="send_file" onclick="sendMode(3)" name="sendRadio"  value="3"/><label for="send_file">파일 업로드(.XLS)</a></label>
+								</p>								
+								<!-- 직접 입력 -->
+								<div id="directInput">								
+									<input type="text" class="input mr5" id="addText" style="width:341px" placeholder="휴대폰 번호 입력" value=""/>
+									<a href="#"><img src="../images/btn_add.gif" alt="추가" onclick="appendBtn()"/></a>
+<!-- 									<input type="button" onclick="li_to_text()" value="li_to_text"/>  강제 list_to_text(); 하기 -->
+									<div class="phone_list" id="phone_list">
+										<ul id=listBox>											
+<!-- 											<li><p>[0101231234]</p><span><img src="../images/ico_del.gif" width="6" height="7" alt="삭제" /></span></li> -->
+<!-- 											<li><p>[0101231234]</p><span><img src="../images/ico_del.gif" width="6" height="7" alt="삭제" /></span></li> -->
+									
+										</ul>
+									</div>								
+								</div>
+								<!-- DB 검색 등록 -->
+								<div id="searchInput">
+									<div class="pin_txt" id="pin_txt">
+										<p>총</p><strong class="txt_red"><b id="chkCnt">00</b><span>명</span></strong>
+										<a href="#"><img class="btn_db" id="searchDB" src="../images/btn_db.gif" alt="dfg" /></a>		<!-- 발송대상자 DB검색 등록 -->								
+									</div>
+									
+								</div>
+								<!-- 파일 업로드 -->
+								<div id="fileInput">
+									<input type="text" name="upfile_value" id="upfile_value" />
+									<div id="file_box2"><input type="file" id="upfile" onchange="changeFile()" name="upfile" /></div>	
+								</div>
+							</td>
+						</tr>
+						<tr>
+							<th class="list_row" scope="row">발신 번호</th>
+							<td class="list_row alt" id="list_row alt">
+								<input type="text" class="input mr5" style="width:341px" id="sender" name="senderNo" placeholder="발신 번호" value="" />
+								<a href="#"><img src="../images/btn_send.gif" alt="발신관리" id="popup1Btn"/></a>
+							</td>
+						</tr>
+						</tbody>
+						</table>
+						<p class="section_btn_2">
+							<img onclick="submitCheck(this)" class="btn_pointer" id="btnReg" src="../images/btn_send2.gif" alt="발송" />
+							<a href="javascript:history.go(0);"><img class="btn_pointer" src="../images/btn_cancel.gif" alt="취소" /></a>
+                		</p>
+                	</div>
+				</div>
+        	</div>
+		</div>
+		
+<!-- 		발송대상자(추후 hidden처리):  -->
+		<input type="hidden" name="phoneNo" width=1000px id="phoneNo" value="test"/>&nbsp;&nbsp;&nbsp; 
+<!-- 		발송대상자를 처리하는방법(추후 hidden처리):  -->
+		<input type="hidden" name="mode" id="mode" value="send_direct"/> 
+<!-- 		<input type="hiden" id="phoneNo2" value="test2"/> -->
+		<input type="hidden" name="byte" id="byte" value=""/>
+		
+		</form>
+        <!-- /main -->
+	</div>
+    <!-- /container -->
+</div>
+<!-- /wrap -->
+
+
+
+
+<!-- 팝업창 S. -->
+
+<iframe id="popup1" style="display:none;" scrolling="no" width="100%" src="layerPopup.php"></iframe>
+
+<!-- 팝업창 E. -->
+<iframe id="dynaction" name="dynaction" style="display:none;" scrolling="no"  src="about:blank"></iframe>
+
+
+<div id="footer">
+	<address>Copyright ⓒ 2011 TOM N TOMS COFFEE All rights reserved.</address>
+</div>
+</body>
+</html>
+
+
+
+
+<?
+/*********** 디비 끊기 ***********/
+	mysql_close($conn);
+/*********** 디비 끊기 ***********/
+?>

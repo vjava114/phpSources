@@ -1,0 +1,258 @@
+<?php
+
+	include_once "../_inc/db.php";
+	include "../_inc/global.php";
+
+	
+	include "../web_class/paging.php";
+
+ 
+	
+	if(!$_POST['page']){
+		$page=1;
+	}else{
+ 		$page = $_POST['page'];
+	}
+ 	$seq =  $_GET['seq'];
+ 	if ($seq == '' )
+	{	
+		//예외 처리 
+	}
+
+
+	/************ 검색기간 입력시 S. **************/
+	$min_month = $_POST['min_month'];
+	$min_month2 = $_POST['min_month2'];
+	if($min_month2) $min_month2 .= '235959';				// between 검색시, (8월1 ~ 8월1 검색) 하면 8월1일자가 검색이 안되는것 해결 
+
+	if( $min_month || $min_month2 ){
+				
+		$search = " AND date_reg BETWEEN '$min_month' AND '$min_month2' ";
+	}
+	/************ 검색기간 입력시 E. **************************************************************************************************************/
+
+
+	/****** paging S. ********/
+	$page_row = 10;			//한 화면에 나타날 게시물 수
+	$page_scale = 10;		//페이지 블록
+
+	$startLimit = ($page-1) * $page_scale;	// limit의 시작값.
+	$endLimit = $page_row; 
+
+/*
+	//총 게시물 수 구하기
+	$query = "
+				SELECT 
+					count(*) as cnt 
+				FROM 
+					coupon_list
+		 	  	WHERE 
+					use_yn = 'N'
+
+			         $search
+		
+				ORDER BY coupon_seq DESC
+	";
+	$result = mysql_query($query);
+	$row = mysql_fetch_row($result);
+
+	$total_record = $row[0];
+	//echo "total_record :" .$total_record;
+
+	$paging_str = paging($page, $page_row, $page_scale);
+*./
+
+/****** paging E. *****************************************************************************************************************/
+
+	
+	//  DETAIL CONTENT
+		$query = "
+SELECT 
+ coupon_seq as coupon_seq ,
+ coupon_name as coupon_name,
+ memo memo,
+ use_yn as use_yn,
+ (select count(*) as cnt from coupon_pin where coupon_seq="  . $seq . ") as cnt 
+FROM coupon_list  
+WHERE  coupon_seq =". $seq;
+ 
+	//echo "<br>쿼리 확인 : ".$query;
+	//echo "<br>쿼리 학인 : ".$listQuery;
+	$listResult = mysql_query($query);
+	$row = mysql_fetch_array($listResult);
+ 
+?>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset= utf-8" />
+<title>TOM N TOMS ADMIN</title>
+<link rel="stylesheet" type="text/css" href="../css/default.css" />
+<link rel="stylesheet" type="text/css" href="../css/admin.css" />
+<link rel="stylesheet" type="text/css" href="../css/ui-lightness/jquery-ui-1.9.2.custom.min.css" />	<!-- jquery-ui 기본이미지 -->
+<script type="text/javascript" src="../js/jquery-1.8.3.min.js"></script>	
+<script type="text/javascript" src="../js/jquery-ui-1.9.2.custom.js"></script>							<!-- datepicker -->
+
+<script type="text/javascript" src="../js/my/my_calendar.js"></script>		<!-- 커스텀 달력 -->
+<script type="text/javascript" src="../js/my/my_validation.js"></script>	<!-- 날짜 유효성 검사 -->
+
+
+<script language="javascript">
+
+function couponDelete(coupon_seq){
+
+	var answer = confirm('정말로 삭제하시겠습니까?')
+	
+	if(answer){
+		location.href='coupon_delete.php?coupon_seq='+coupon_seq;
+	
+	}else{
+		return false;
+	}
+}
+</script>
+
+
+<script language="javascript">
+
+
+$(document).ready(function(){
+	$("#gosearch").click(function(){
+
+		var frm = document.frm;
+		var sDate = $("#min_month").val();
+		var eDate = $("#min_month2").val();
+
+		if(dateChk(sDate, eDate) != true){			// my_validation.js		
+			frm.action = "coupons_inquiry.html";
+			frm.submit();
+		}
+		
+	});
+});
+
+</script>
+
+<script language="javascript">
+//페이지 이동
+function goPage(curpage) {
+	
+	var frm = document.frm;	
+	var page = document.getElementById("page");
+	page.value = curpage;
+	 
+	frm.submit();	
+}
+</script>
+
+</head>
+
+<body id="main_bg">
+<div id="wrap">
+	<!-- top -->
+	<div id="header">   	
+    	<h1><a href="/"><img src="../images/main_logo.png" alt="TOM N TOMS COFFEE" /></a></h1>
+		<ul id="gnb">
+			<li><a href="/">HOME</a></li>
+			<li> l </li>
+			<li><a href="#">사이트 바로가기</a></li>
+			<li> l </li>
+			<li><a href="#">관리자메뉴얼 다운</a></li>
+			<li> l </li>
+			<li><a href="../member/logout.php">로그아웃</a></li>			
+		</ul>
+		<ul id="main_menu">
+			<li><a href='#'><img src="../images/gnb01.png" alt="메뉴관리" onmouseout="this.src='../images/gnb01.png'"onmouseover="this.src='../images/gnb01_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb02.png" alt="매장관리" onmouseout="this.src='../images/gnb02.png'"onmouseover="this.src='../images/gnb02_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb03.png" alt="회원관리" onmouseout="this.src='../images/gnb03.png'"onmouseover="this.src='../images/gnb03_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb04.png" alt="이벤트관리" onmouseout="this.src='../images/gnb04.png'"onmouseover="this.src='../images/gnb04_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb05.png" alt="게시판관리" onmouseout="this.src='../images/gnb05.png'"onmouseover="this.src='../images/gnb05_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb06.png" alt="통계분석" onmouseout="this.src='../images/gnb06.png'"onmouseover="this.src='../images/gnb06_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb07.png" alt="설정" onmouseout="this.src='../images/gnb07.png'"onmouseover="this.src='../images/gnb07_on.png'"/></a></li>
+			<li><a href='#'><img src="../images/gnb08.png" alt="메시지발송" onmouseout="this.src='../images/gnb08.png'"onmouseover="this.src='../images/gnb08_on.png'"/></a></li>
+		</ul>
+	</div>
+    <!-- /top -->
+	<div id="container2">
+    	<!-- side -->
+		<div id="snb">
+        	<ul>
+				<li class="snb_top bg"><p class="title">메시지발송</p></li>
+				<li class="snb_menu"><img src="../images/blit_arrow.gif" alt="" />&nbsp;<a href="#">쿠폰관리</a>
+					<ul>
+						<li><a class="on" href="#">쿠폰조회</a></li>
+						<li><a href="coupons_reg.html">쿠폰등록</a></li>
+					</ul>
+				</li>
+				<li class="snb_menu"><img src="../images/blit_arrow.gif" alt="" />&nbsp;<a href="#">메시지 관리</a>
+					<ul>
+						<li><a href="../messageManage/message_send_v1.html">메시지 발송</a></li>
+					</ul>
+				</li>
+				<li class="snb_menu"><img src="../images/blit_arrow.gif" alt="" />&nbsp;<a href="#">메시지 통계 관리</a>
+					<ul>
+						<li><a href="../statics/send_statistics.html">발송통계</a></li>
+						<li><a href="../statics/sum_statistics.html">정산통계</a></li>
+					</ul>
+				</li>
+				<li><img src="../images/snb_bottom.gif" alt="" /></li>
+			</ul>
+		</div>
+        <!-- /side -->
+        <!-- main -->
+		<form name="frm" id="frm" method="post" action="grandopen_action.php" enctype="multipart/form-data">
+		<div id="main">
+            <div class="gutter">
+				<div class="main_title">
+					<h2><img src="../images/blit_arrow_green.gif" alt="" />&nbsp;쿠폰 등록</h2>
+					<p class="path">HOME <span>></span> 메시지발송 <span>></span> 쿠폰관리  <span>></span> 쿠폰등록</p>
+				</div>
+				<div class="section_main">
+					<table>
+					<colgroup>
+					<col width="130px" />
+					<col width="*" />
+					</colgroup>
+					<tbody>
+					<tr>
+						<th class="list_row" scope="row"><label for="coupon_name">쿠폰명</label></th>
+						<td class="list_row alt"><input type="text" id="coupon_name" name="coupon_name" class="input mr10" style="width:341px"  value='<?=$row[coupon_name]?>'disable /><<span>*쿠폰 등록 시, 구분되는 명칭</span></td>
+					</tr>
+					<tr>
+						<th class="list_row" scope="row">쿠폰발급수</th>
+						<td class="list_row alt">
+						<?=number_format($row[cnt])?>개
+						</td>
+					</tr>
+					<tr>
+						<th class="list_row" scope="row"><label for="memo">메모</label></th>
+						<td class="list_row alt"><textarea name="memo" id="memo" cols="30" rows="20" style="width:100%"><?=$row[memo]?></textarea></td>
+					</tr>
+					</tbody>
+					</table>
+					<p class="section_btn_2">
+                    
+                    	<a href="javascript:history.go(-1);"><img class="btn_pointer" src="../images/btn_confirm.gif" alt="되돌아가기" /></a>
+                	</p>
+				</div>
+        	</div>
+		</div>
+		</form>
+      <!-- /main -->
+	</div>
+    <!-- /container -->
+</div>
+<!-- /wrap -->
+<div id="footer">
+	<address>Copyright ⓒ 2011 TOM N TOMS COFFEE All rights reserved.</address>
+</div>
+</body>
+</html>
+
+
+<?
+/*********** 디비 끊기 ***********/
+	mysql_close($conn);
+/*********** 디비 끊기 ***********/
+?>
